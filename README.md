@@ -15,3 +15,8 @@ cd 2048-Bad-Gateway
 git submodule init
 git submodule update
 ```
+
+# 一些怎么玩的想法
+
+1. 在对面没有足够大之前，不要往对面填——除非为了保护自己
+2. 据说随机只能跑到64——除非你送人头
