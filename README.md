@@ -20,8 +20,8 @@ git submodule update
 命令行进入`sessdsa.2048/src/tools/`，运行`python`，
 ```Python
 >>> import round_match
->>> round_match(['<玩家1的相对路径>', '<玩家2的相对路径>']) # 机与机
->>> round_match([('human.py', -60), '<玩家2的相对路径>'], MAXTIME = 5000) # 人机
+>>> round_match.main(['<玩家1的相对路径>', '<玩家2的相对路径>']) # 机与机
+>>> round_match.main([('human.py', -60), '<玩家2的相对路径>'], MAXTIME = 5000) # 人机
 ```
 
 # 一些怎么玩的想法
