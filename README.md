@@ -16,6 +16,14 @@ git submodule init
 git submodule update
 ```
 
+# 跑人机
+命令行进入`sessdsa.2048/src/tools/`，运行`python`，
+```Python
+>>> import round_match
+>>> round_match(['<玩家1的相对路径>', '<玩家2的相对路径>']) # 机与机
+>>> round_match([('human.py', -60), '<玩家2的相对路径>'], MAXTIME = 5000) # 人机
+```
+
 # 一些怎么玩的想法
 
 1. 在对面没有足够大之前，不要往对面填——除非为了保护自己
