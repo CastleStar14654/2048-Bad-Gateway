@@ -2,7 +2,11 @@
 '''
 
 POSITION_MODE ='position'
+_POSITION_MODE ='_position'
 DIRECTION_MODE = 'direction'
+_DIRECTION_MODE = '_direction'
+
+UP, DOWN, LEFT, RIGHT = 0, 1, 2, 3
 
 class Player:
     def __init__(self, isFirst: bool, array: list) -> None:
@@ -23,6 +27,8 @@ class Player:
             return self._output_first_pos(currentRound, board)
         elif mode == DIRECTION_MODE:
             return self._output_first_dir(currentRound, board)
+        elif mode in (_POSITION_MODE, _DIRECTION_MODE):
+            pass
         else:
             raise ValueError('wrong mode: ' + str(mode))
 
@@ -34,6 +40,8 @@ class Player:
             return self._output_second_pos(currentRound, board)
         elif mode == DIRECTION_MODE:
             return self._output_second_dir(currentRound, board)
+        elif mode in (_POSITION_MODE, _DIRECTION_MODE):
+            pass
         else:
             raise ValueError('wrong mode: ' + str(mode))
 
