@@ -27,7 +27,7 @@ class Player:
         elif mode == DIRECTION_MODE:
             return self._output_first_dir(currentRound, board)
         else:
-            raise ValueError('wrong mode: ' + str(mode))
+            pass
 
     def _output_second(self, currentRound: int, board, mode: str):
         '''if mode=='position', return (row, col)
@@ -38,7 +38,7 @@ class Player:
         elif mode == DIRECTION_MODE:
             return self._output_second_dir(currentRound, board)
         else:
-            raise ValueError('wrong mode: ' + str(mode))
+            pass
 
     def _output_first_pos(self, currentRound: int, board) -> tuple:
         '''return (row, col)
