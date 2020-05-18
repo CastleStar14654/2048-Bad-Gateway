@@ -3,6 +3,13 @@ Group `502 Bad Gateway`'s stupid 2048 player for SESSDSA, 2020 Spring, PKU.
 
 For more information about the game, c.f. submodule [`sessdsa.2048@pkulab409`](https://github.com/pkulab409/sessdsa.2048)
 
+# TODO
+
+参见基本实现了 minimax & alpha-beta 的 `minimax.py`. 
+1. 更好的获得在对方哪个空位填子的方法
+2. 估值函数
+  + 先后手是否可以两个版本
+
 ## How to clone this repo with its submodule
 Open console, checkout to where you intends to save the repo, then
 ```
