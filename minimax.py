@@ -204,6 +204,7 @@ class Node:
                     res.append(('add', self.isFirst == self.minimax, pos))
         else:
             for direction in (3, 0, 1, 2) if (self.isFirst ^ self.minimax) else (2, 0, 1, 3):
+                '''TODO 对方进攻/防守策略判断及优化'''
                 # 假设大家优先进攻
                 res.append(('move', self.isFirst ^ self.minimax, direction))
         return res

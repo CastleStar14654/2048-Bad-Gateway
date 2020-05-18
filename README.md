@@ -3,12 +3,30 @@ Group `502 Bad Gateway`'s stupid 2048 player for SESSDSA, 2020 Spring, PKU.
 
 For more information about the game, c.f. submodule [`sessdsa.2048@pkulab409`](https://github.com/pkulab409/sessdsa.2048)
 
+# 目前策略
+
+1. 进攻为主, 往对方那边推
+2. 尽可能好地模拟对方操作 (合并方向方面)
+
 # TODO
 
-参见基本实现了 minimax & alpha-beta 的 `minimax.py`. 
-1. 更好的获得在对方哪个空位填子的方法
-2. 估值函数
-  + 先后手是否可以两个版本
+参见基本实现了 minimax & alpha-beta 的 [`minimax.py`](./minimax.py). 
+1. 更好的获得在对方哪个空位填子的方法 -- 能编程实现的那种  
+    [@baikangbo](https://github.com/baikangbo)   
+    [@DeweiGong](https://github.com/DeweiGong) : 找一个函数, 算出到对方下子的最好位置
+    
+    ([@YitingKW](https://github.com/YitingKW) : 比如卡在对方两个可合并棋子之间 -- 如何实现)
+2. 估值函数 -- 可以做些实验 (?)  
+    考虑棋子之间的关联?  
+    [@Kason-pku](https://github.com/Kason-pku) [@YitingKW](https://github.com/YitingKW)
+    + 先后手是否可以两个版本
+3. 进攻或防守策略的判断. 可以放到 __类变量__ 里.   
+    [@CastleStar14654](https://github.com/CastleStar14654)
+4. 到时候写报告
+
+# KPI 列表
+
+TODO
 
 ## How to clone this repo with its submodule
 Open console, checkout to where you intends to save the repo, then
@@ -24,12 +42,13 @@ git submodule update
 ```
 
 # 跑人机
-命令行进入`sessdsa.2048/src/tools/`，运行`python`，
+命令行进入 [`sessdsa.2048/src/tools/`](./sessdsa.2048/src/tools/)，运行`python`，
 ```Python
 >>> import round_match
 >>> round_match.main(['<玩家1的相对路径>', '<玩家2的相对路径>']) # 机与机
 >>> round_match.main([('human.py', -60), '<玩家2的相对路径>'], MAXTIME = 5000) # 人机
 ```
+其他更多参数详见 [`sessdsa.2048/src/tools/round_match.py`](./sessdsa.2048/src/tools/)
 
 # 一些怎么玩的想法
 
