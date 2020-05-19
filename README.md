@@ -23,6 +23,7 @@ For more information about the game, c.f. submodule [`sessdsa.2048@pkulab409`](h
 3. 进攻或防守策略的判断. 可以放到 __类变量__ 里.   
     [@CastleStar14654](https://github.com/CastleStar14654)
 4. 到时候写报告
+5. 最后一层用蒙特卡洛树？
 
 # KPI 列表
 
