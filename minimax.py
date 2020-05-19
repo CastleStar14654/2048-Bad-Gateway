@@ -2,6 +2,7 @@
 evaluate(board, isFirst) 返回 isFirst 方与 not isFirst 方的局面之差
 '''
 import random
+import operator
 
 POSITION_MODE = 'position'
 DIRECTION_MODE = 'direction'
@@ -12,41 +13,12 @@ UP, DOWN, LEFT, RIGHT = 0, 1, 2, 3
 
 INF = float('inf')
 
-class operator:
-    @staticmethod
-    def lt(a, b):
-        "Same as a < b."
-        return a < b
-
-    @staticmethod
-    def le(a, b):
-        "Same as a <= b."
-        return a <= b
-
-    @staticmethod
-    def eq(a, b):
-        "Same as a == b."
-        return a == b
-
-    @staticmethod
-    def ne(a, b):
-        "Same as a != b."
-        return a != b
-
-    @staticmethod
-    def ge(a, b):
-        "Same as a >= b."
-        return a >= b
-
-    @staticmethod
-    def gt(a, b):
-        "Same as a > b."
-        return a > b
-
-
 class Node:
+    direction_count = {True: {RIGHT: 5, UP: 3, DOWN: 3, LEFT: 0},
+                       False: {LEFT: 5, UP: 3, DOWN: 3, RIGHT: 0}}
+
     def __init__(self, isFirst: bool, mode: str, board, currentRound: int,
-                 evaluate, minimax: bool, alpha = -INF,
+                 evaluate, minimax: bool, alpha=-INF,
                  beta: float = INF, depth: int = None):
         '''生成节点。
         player: 玩家
@@ -81,8 +53,9 @@ class Node:
         '''选取操作 operation 对应的分支
         返回新的树根; 如果该操作未被我们考虑, 返回 None
         '''
-        if len(operation) == 1: # 我也不知道为啥方向会被套进元组里
+        if len(operation) == 1:  # 我也不知道为啥方向会被套进元组里
             operation = operation[0]
+            self.direction_count[not self.isFirst][operation] += 1
         res = self.nodes.get(operation, None)
         if res:
             res.depth = self.depth - 1
@@ -100,7 +73,8 @@ class Node:
             new_nodes = {}  # 本字典用于剪枝. 保存要保留的节点
             for op, node in self.nodes.items():
                 # min 节点更想要最小的 beta, max 节点更想要最大的 alpha
-                setattr(node, self.ab_attr, getattr(self, self.ab_attr))  # 更新子节点的参量
+                setattr(node, self.ab_attr, getattr(
+                    self, self.ab_attr))  # 更新子节点的参量
                 new_value = node.deepen(modes, new_round)  # 保存子节点搜索后的新参量
                 if self.comp(new_value, getattr(self, self.ab_attr)):  # 如果比现在的好, 那么更新
                     setattr(self, self.ab_attr, new_value)
@@ -144,7 +118,8 @@ class Node:
                 # 如果前面没搜出什么东西, 那么把空操作弄进去
                 self.nodes[()] = Node(self.isFirst, modes[0], self.board.copy(), new_round,
                                       self.evaluate, not self.minimax, -INF, INF, None)
-                setattr(self.nodes[()], self.ab_attr, getattr(self, self.ab_attr))
+                setattr(self.nodes[()], self.ab_attr,
+                        getattr(self, self.ab_attr))
                 new_value = self.nodes[()].deepen(modes[1:], new_round)
                 setattr(self, self.ab_attr, new_value)
         else:
@@ -195,18 +170,26 @@ class Node:
             if pos:
                 # 如果可以在自己这边放
                 res.append(('add', self.isFirst ^ self.minimax, pos))
-            if not res or self.currentRound > 300:
+            if not res or self.currentRound > 200:
                 # 如果局势比较晚, 或者不可以在自己这里放, 那么随机搞两个
                 '''TODO: 更好的获得位置的方法
                 '''
                 nones = self.board.getNone(self.isFirst == self.minimax)
                 random.shuffle(nones)
-                for pos in nones[:2]:
+                for pos in nones[:2 if self.currentRound < 250 else 3]:
                     res.append(('add', self.isFirst == self.minimax, pos))
         else:
-            for direction in (3, 0, 1, 2) if (self.isFirst ^ self.minimax) else (2, 0, 1, 3):
-                '''TODO 对方进攻/防守策略判断及优化'''
-                # 假设大家优先进攻
+            '''TODO 对方进攻/防守策略判断及优化'''
+            if self.minimax:
+                # 对方
+                d = self.direction_count[not self.isFirst]
+                d = sorted(d, key=lambda x: d[x], reverse=True)
+            else:
+                # 自己, 优先进攻
+                d = (RIGHT, UP, DOWN, LEFT) \
+                    if self.isFirst \
+                    else (LEFT, UP, DOWN, RIGHT)
+            for direction in d:
                 res.append(('move', self.isFirst ^ self.minimax, direction))
         return res
 
@@ -236,7 +219,7 @@ class Player:
             if self.tree == None:
                 # 不幸没有猜中, 重新建设搜索树
                 mode_without_bar = mode
-                mode_without_bar.lstrip('_') # 搞掉烦人的 '_'
+                mode_without_bar.lstrip('_')  # 搞掉烦人的 '_'
                 self.tree = Node(self._isFirst, mode_without_bar, board.copy(), currentRound,
                                  self.evaluate, False, depth=0)
                 if mode_without_bar == POSITION_MODE:
