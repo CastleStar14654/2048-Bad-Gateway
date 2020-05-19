@@ -10,6 +10,7 @@ _DIRECTION_MODE = '_direction'
 
 UP, DOWN, LEFT, RIGHT = 0, 1, 2, 3
 
+INF = float('inf')
 
 class operator:
     @staticmethod
@@ -45,8 +46,8 @@ class operator:
 
 class Node:
     def __init__(self, isFirst: bool, mode: str, board, currentRound: int,
-                 evaluate, minimax: bool, alpha=-float('inf'),
-                 beta: float = float('inf'), depth: int = None):
+                 evaluate, minimax: bool, alpha = -INF,
+                 beta: float = INF, depth: int = None):
         '''生成节点。
         player: 玩家
         isFirst: 这棵 ***树*** 是 !!!以谁的视角!!! 生成的
@@ -71,11 +72,16 @@ class Node:
         self.depth = depth
         self.nodes = {}  # {operation: Node}
 
+        # `ab_attr` 归本层管的参数
+        # `comp` 用于本层的比较函数
+        self.ab_attr = 'beta' if self.minimax else 'alpha'
+        self.comp = operator.lt if self.minimax else operator.gt
+
     def release(self, operation):
         '''选取操作 operation 对应的分支
         返回新的树根; 如果该操作未被我们考虑, 返回 None
         '''
-        if len(operation) == 1:
+        if len(operation) == 1: # 我也不知道为啥方向会被套进元组里
             operation = operation[0]
         res = self.nodes.get(operation, None)
         if res:
@@ -86,31 +92,26 @@ class Node:
         '''加深并搜索树. modes 为新的层的 mode
         返回 新的 alpha 或 beta
         '''
-        # `ab_attr` 归本层管的参数
-        # `comp` 用于本层的比较函数
         # `best_so_far` 万一本轮搜出来比之前的都糟糕, 使用这个变量跟踪这种事情
-        if self.minimax:
-            ab_attr, comp, best_so_far = 'beta', operator.lt, float('inf')
-        else:
-            ab_attr, comp, best_so_far = 'alpha', operator.gt, -float('inf')
+        best_so_far = INF if self.minimax else -INF
 
         if self.nodes:
             # 本层已被搜过. 只需更新 alpha 或 beta
             new_nodes = {}  # 本字典用于剪枝. 保存要保留的节点
             for op, node in self.nodes.items():
                 # min 节点更想要最小的 beta, max 节点更想要最大的 alpha
-                setattr(node, ab_attr, getattr(self, ab_attr))  # 更新子节点的参量
+                setattr(node, self.ab_attr, getattr(self, self.ab_attr))  # 更新子节点的参量
                 new_value = node.deepen(modes, new_round)  # 保存子节点搜索后的新参量
-                if comp(new_value, getattr(self, ab_attr)):  # 如果比现在的好, 那么更新
-                    setattr(self, ab_attr, new_value)
-                if comp(new_value, best_so_far):  # 同上, 更新 `best_so_far`
+                if self.comp(new_value, getattr(self, self.ab_attr)):  # 如果比现在的好, 那么更新
+                    setattr(self, self.ab_attr, new_value)
+                if self.comp(new_value, best_so_far):  # 同上, 更新 `best_so_far`
                     best_so_far = new_value
                 new_nodes[op] = node  # 保留要留存的枝
                 if self.alpha >= self.beta:  # 剪枝条件
                     break
-            if comp(getattr(self, ab_attr), best_so_far):
+            if self.comp(getattr(self, self.ab_attr), best_so_far):
                 # 出现新境况糟于原有境况, 更新
-                setattr(self, ab_attr, best_so_far)
+                setattr(self, self.ab_attr, best_so_far)
             self.nodes = new_nodes  # 保留部分节点
         elif modes:
             # 本层没被搜过, 而且还要往更深层搜
@@ -125,27 +126,27 @@ class Node:
                         continue
                     # 创建新节点, 给下一层
                     self.nodes[op_func[2]] = Node(self.isFirst, modes[0], board_copy, new_round,
-                                                  self.evaluate, not self.minimax, -float('inf'), float('inf'), None)
+                                                  self.evaluate, not self.minimax, -INF, INF, None)
                     # 下面与之前类似
                     setattr(self.nodes[op_func[2]],
-                            ab_attr, getattr(self, ab_attr))
+                            self.ab_attr, getattr(self, self.ab_attr))
                     new_value = self.nodes[op_func[2]].deepen(
                         modes[1:], new_round)  # 继续往深层搜
-                    if comp(new_value, getattr(self, ab_attr)):
-                        setattr(self, ab_attr, new_value)
-                    if comp(new_value, best_so_far):
+                    if self.comp(new_value, getattr(self, self.ab_attr)):
+                        setattr(self, self.ab_attr, new_value)
+                    if self.comp(new_value, best_so_far):
                         best_so_far = new_value
                     if self.alpha >= self.beta and self.mode == POSITION_MODE:  # 剪枝条件
                         break
-                if comp(getattr(self, ab_attr), best_so_far):
-                    setattr(self, ab_attr, best_so_far)
+                if self.comp(getattr(self, self.ab_attr), best_so_far):
+                    setattr(self, self.ab_attr, best_so_far)
             if not self.nodes:
                 # 如果前面没搜出什么东西, 那么把空操作弄进去
                 self.nodes[()] = Node(self.isFirst, modes[0], self.board.copy(), new_round,
-                                      self.evaluate, not self.minimax, -float('inf'), float('inf'), None)
-                setattr(self.nodes[()], ab_attr, getattr(self, ab_attr))
+                                      self.evaluate, not self.minimax, -INF, INF, None)
+                setattr(self.nodes[()], self.ab_attr, getattr(self, self.ab_attr))
                 new_value = self.nodes[()].deepen(modes[1:], new_round)
-                setattr(self, ab_attr, new_value)
+                setattr(self, self.ab_attr, new_value)
         else:
             opers = self.operations()
             # 需保证层数为0的时候一定在搜索direction
@@ -155,20 +156,20 @@ class Node:
                 if getattr(board_copy, op_func[0])(op_func[1], op_func[2]) == False:
                     continue
                 new_value = self.evaluate(board_copy, self.isFirst)
-                if comp(new_value, getattr(self, ab_attr)):
-                    setattr(self, ab_attr, new_value)
-                if comp(new_value, best_so_far):
+                if self.comp(new_value, getattr(self, self.ab_attr)):
+                    setattr(self, self.ab_attr, new_value)
+                if self.comp(new_value, best_so_far):
                     best_so_far = new_value
                 if self.alpha >= self.beta:
                     break
-            if comp(getattr(self, ab_attr), best_so_far):
-                setattr(self, ab_attr, best_so_far)
+            if self.comp(getattr(self, self.ab_attr), best_so_far):
+                setattr(self, self.ab_attr, best_so_far)
 
         # 根节点的 depth 要更新
         if self.depth != None:
             self.depth += len(modes)
 
-        return getattr(self, ab_attr)
+        return getattr(self, self.ab_attr)
 
     def decision(self):
         '''决策. 需要先调用 deepen()
