@@ -13,7 +13,6 @@ UP, DOWN, LEFT, RIGHT = 0, 1, 2, 3
 
 INF = float('inf')
 
-
 class Node:
     direction_count = {True: {RIGHT: 5, UP: 3, DOWN: 3, LEFT: 0},
                        False: {LEFT: 5, UP: 3, DOWN: 3, RIGHT: 0}}
@@ -157,52 +156,6 @@ class Node:
                 return op, node
         raise RuntimeError('no decision')
 
-    def find_opp_pos(self):  # 获得在对手领地下棋的最优位置
-        nones = self.board.getNone(not self.isFirst)
-
-        if nones == []:  # 不存在可下的位置
-            return None
-
-        position_dic = {}
-
-        for pos in nones:
-            (x, y) = pos
-            x_left, x_right, y_up, y_down = 0, 0, 0, 0
-
-            for i in range(x - 1, -1, -1):  # 获取四个邻域值
-                if self.board.getBelong((i, y)) == self.isFirst or i < 0:
-                    break
-                if self.board.getValue((i, y)) != 0:
-                    x_left = self.board.getValue((i, y))
-
-            for i in range(x + 1, 8):
-                if self.board.getBelong((i, y)) == self.isFirst or i > 7:
-                    break
-                if self.board.getValue((i, y)) != 0:
-                    x_right = self.board.getValue((i, y))
-
-            for j in range(y - 1, -1, -1):
-                if self.board.getBelong((x, j)) == self.isFirst or j < 0:
-                    break
-                if self.board.getValue((x, j)) != 0:
-                    y_down = self.board.getValue((x, j))
-
-            for j in range(y + 1, 4):
-                if self.board.getBelong((x, j)) == self.isFirst or j > 7:
-                    break
-                if self.board.getValue((x, j)) != 0:
-                    y_up = self.board.getValue((x, j))
-
-            score = x_left + x_right + y_up + y_down  # 先算四个邻域总和
-            if x_right == x_left:  # 如果同一方向上有相等（可合并）的，再加一遍
-                score += 2 * x_right
-            if y_down == y_up:
-                score += 2 * y_down
-            position_dic[pos] = score
-
-        # return position_dic.popitem()[0]
-        return sorted(position_dic.items(), key=lambda kv: (kv[1], kv[0]))
-
     def operations(self) -> list:
         '''返回可用操作的 [(名字, *调用传参), ...]
         '''
@@ -217,17 +170,14 @@ class Node:
             if pos:
                 # 如果可以在自己这边放
                 res.append(('add', self.isFirst ^ self.minimax, pos))
-
-            '''TODO: 更好的获得位置的方法
-            '''
-            try:
-                temp = self.find_opp_pos()
-
-            except RuntimeError:
-                temp = {}
-            if temp:
-                res.append(('add', self.isFirst == self.minimax, temp[-1][0]))
-
+            if not res or self.currentRound > 200:
+                # 如果局势比较晚, 或者不可以在自己这里放, 那么随机搞两个
+                '''TODO: 更好的获得位置的方法
+                '''
+                nones = self.board.getNone(self.isFirst == self.minimax)
+                random.shuffle(nones)
+                for pos in nones[:2 if self.currentRound < 250 else 3]:
+                    res.append(('add', self.isFirst == self.minimax, pos))
         else:
             '''TODO 对方进攻/防守策略判断及优化'''
             if self.minimax:
@@ -300,9 +250,7 @@ class Player:
         '''估值函数 TODO 返回 isFirst 方与 not isFirst 方的局面之差
         TODO 先后手是否可以两个版本?
         '''
-
         def func(x): return 1 << (2 * x)
-
         res = sum(map(func, board.getScore(isFirst)))
         if self._isFirst:
             res -= .25 * sum(map(func, board.getScore(not isFirst)))
