@@ -157,40 +157,50 @@ class Node:
                 return op, node
         raise RuntimeError('no decision')
 
-    def find_opp_pos(self):  # 获得在对手领地下棋的最优位置
+    def find_opp_pos(self):
+        '''获得在对手领地下棋的可选位置列表
+        按估值从大到小排列. 若不可下, 返回 `[]`
+        '''
         nones = self.board.getNone(not self.isFirst)
 
-        if nones == []:  # 不存在可下的位置
-            return None
+        if not nones:  # 不存在可下的位置
+            return []
 
         position_dic = {}
 
         for pos in nones:
-            (x, y) = pos
+            '''TODO row, col = pos
+            '''
+            x, y = pos
             x_left, x_right, y_up, y_down = 0, 0, 0, 0
 
+            '''TODO 有没有可能合并 for 循环. 仿佛改成 while 也不错
+            '''
+
             for i in range(x - 1, -1, -1):  # 获取四个邻域值
+                '''TODO 这个 `i<0` 的判断是多余的吧?'''
                 if self.board.getBelong((i, y)) == self.isFirst or i < 0:
                     break
-                if self.board.getValue((i, y)) != 0:
+                '''TODO 这里两次调用了 getValue. 建议改为仅调用 1 次'''
+                if self.board.getValue((i, y)):
                     x_left = self.board.getValue((i, y))
 
             for i in range(x + 1, 8):
                 if self.board.getBelong((i, y)) == self.isFirst or i > 7:
                     break
-                if self.board.getValue((i, y)) != 0:
+                if self.board.getValue((i, y)):
                     x_right = self.board.getValue((i, y))
 
             for j in range(y - 1, -1, -1):
                 if self.board.getBelong((x, j)) == self.isFirst or j < 0:
                     break
-                if self.board.getValue((x, j)) != 0:
+                if self.board.getValue((x, j)):
                     y_down = self.board.getValue((x, j))
 
             for j in range(y + 1, 4):
                 if self.board.getBelong((x, j)) == self.isFirst or j > 7:
                     break
-                if self.board.getValue((x, j)) != 0:
+                if self.board.getValue((x, j)):
                     y_up = self.board.getValue((x, j))
 
             score = x_left + x_right + y_up + y_down  # 先算四个邻域总和
@@ -200,8 +210,7 @@ class Node:
                 score += 2 * y_down
             position_dic[pos] = score
 
-        # return position_dic.popitem()[0]
-        return sorted(position_dic.items(), key=lambda kv: (kv[1], kv[0]))
+        return sorted(position_dic, key=lambda k: position_dic[k], reverse=True)
 
     def operations(self) -> list:
         '''返回可用操作的 [(名字, *调用传参), ...]
@@ -220,13 +229,10 @@ class Node:
 
             '''TODO: 更好的获得位置的方法
             '''
-            try:
-                temp = self.find_opp_pos()
+            temp = self.find_opp_pos()
 
-            except RuntimeError:
-                temp = {}
             if temp:
-                res.append(('add', self.isFirst == self.minimax, temp[-1][0]))
+                res.append(('add', self.isFirst == self.minimax, temp[0]))
 
         else:
             '''TODO 对方进攻/防守策略判断及优化'''
