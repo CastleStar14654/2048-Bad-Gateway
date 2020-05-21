@@ -306,10 +306,6 @@ class Player:
         '''估值函数 TODO 返回 isFirst 方与 not isFirst 方的局面之差
         TODO 先后手是否可以两个版本?
         '''
-
-        def func(x): return 1 << (2 * x)
-
-        res = sum(map(func, board.getScore(isFirst)))
-        if self._isFirst:
-            res -= .25 * sum(map(func, board.getScore(not isFirst)))
+        def func(x): return 1 << (3 * x)
+        res = sum(map(func, board.getScore(isFirst))) - .125 * sum(map(func, board.getScore(not isFirst)))
         return res
