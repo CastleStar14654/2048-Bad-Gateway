@@ -169,39 +169,40 @@ class Node:
         position_dic = {}
 
         for pos in nones:
-            '''TODO row, col = pos
-            '''
-            x, y = pos
-            x_left, x_right, y_up, y_down = 0, 0, 0, 0
 
+            y, x = pos
+            #横竖方向遇到的第一个对方棋子
+            x_left, x_right, y_up, y_down = 0, 0, 0, 0
+            #横向遇到的第一个我方棋子
+            x_ours=0
             '''TODO 有没有可能合并 for 循环. 仿佛改成 while 也不错
             '''
 
             for i in range(x - 1, -1, -1):  # 获取四个邻域值
-                '''TODO 这个 `i<0` 的判断是多余的吧?'''
-                if self.board.getBelong((i, y)) == self.isFirst or i < 0:
+                if x_left:
                     break
-                '''TODO 这里两次调用了 getValue. 建议改为仅调用 1 次'''
-                if self.board.getValue((i, y)):
-                    x_left = self.board.getValue((i, y))
+                if self.board.getBelong((y, i)) == self.isFirst:
+                    x_ours = self.board.getValue((y, i))
+                    break
+                x_left = self.board.getValue((y, i))
 
             for i in range(x + 1, 8):
-                if self.board.getBelong((i, y)) == self.isFirst or i > 7:
+                if x_right:
                     break
-                if self.board.getValue((i, y)):
-                    x_right = self.board.getValue((i, y))
+                if self.board.getBelong((y, i)) == self.isFirst:
+                    x_ours = self.board.getValue((y, i))
+                    break
+                x_right = self.board.getValue((y, i))
 
             for j in range(y - 1, -1, -1):
-                if self.board.getBelong((x, j)) == self.isFirst or j < 0:
+                if self.board.getBelong((x, j)) == self.isFirst or y_down:
                     break
-                if self.board.getValue((x, j)):
-                    y_down = self.board.getValue((x, j))
+                y_down = self.board.getValue((j, x))
 
             for j in range(y + 1, 4):
-                if self.board.getBelong((x, j)) == self.isFirst or j > 7:
+                if self.board.getBelong((x, j)) == self.isFirst or y_up:
                     break
-                if self.board.getValue((x, j)):
-                    y_up = self.board.getValue((x, j))
+                y_up = self.board.getValue((j, x))
 
             score = x_left + x_right + y_up + y_down  # 先算四个邻域总和
             if x_right == x_left:  # 如果同一方向上有相等（可合并）的，再加一遍
@@ -209,6 +210,12 @@ class Node:
             if y_down == y_up:
                 score += 2 * y_down
             position_dic[pos] = score
+
+            # 对方可吞并，才考虑在内吗？
+            if x_ours == x_left or x_ours == x_right:
+                if x_ours > score:
+                    # 权重比对方自己合并要高
+                    position_dic[pos] = x_ours * 5
 
         return sorted(position_dic, key=lambda k: position_dic[k], reverse=True)
 
