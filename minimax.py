@@ -3,6 +3,7 @@ evaluate(board, isFirst) 返回 isFirst 方与 not isFirst 方的局面之差
 '''
 import random
 import operator
+import numpy as np
 
 POSITION_MODE = 'position'
 DIRECTION_MODE = 'direction'
@@ -12,6 +13,12 @@ _DIRECTION_MODE = '_direction'
 UP, DOWN, LEFT, RIGHT = 0, 1, 2, 3
 
 INF = float('inf')
+
+def repr_to_np(board_str: str) -> np.ndarray:
+    '''将棋盘的字符串转变为 numpy 数组
+    返回: numpy 的 int8 数组
+    '''
+    return np.array(board_str.split(), dtype=np.int8).reshape((4, 8))
 
 class Node:
     direction_count = {True: {RIGHT: 5, UP: 3, DOWN: 3, LEFT: 0},
@@ -170,13 +177,13 @@ class Node:
             if pos:
                 # 如果可以在自己这边放
                 res.append(('add', self.isFirst ^ self.minimax, pos))
-            if not res or self.currentRound > 200:
+            if not res or self.currentRound > 25:
                 # 如果局势比较晚, 或者不可以在自己这里放, 那么随机搞两个
                 '''TODO: 更好的获得位置的方法
                 '''
                 nones = self.board.getNone(self.isFirst == self.minimax)
                 random.shuffle(nones)
-                for pos in nones[:2 if self.currentRound < 250 else 3]:
+                for pos in nones[:16]:
                     res.append(('add', self.isFirst == self.minimax, pos))
         else:
             '''TODO 对方进攻/防守策略判断及优化'''
