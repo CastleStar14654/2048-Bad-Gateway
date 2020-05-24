@@ -219,8 +219,7 @@ class Player:
             self.tree = self.tree.release(prev_decision)
             if self.tree == None:
                 # 不幸没有猜中, 重新建设搜索树
-                mode_without_bar = mode
-                mode_without_bar.lstrip('_')  # 搞掉烦人的 '_'
+                mode_without_bar = mode.lstrip('_')  # 搞掉烦人的 '_'
                 self.tree = Node(self._isFirst, mode_without_bar, board.copy(), currentRound,
                                  self.evaluate, False, depth=0)
                 if mode_without_bar == POSITION_MODE:
@@ -353,42 +352,3 @@ class Player:
         + moveweight*movability(board, not isFirst) \
         + basicweight*basicValue(board, not isFirst) \
         + layoutweight*layoutValue(board, not isFirst))\
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
