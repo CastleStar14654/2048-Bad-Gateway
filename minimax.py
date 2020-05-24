@@ -21,8 +21,8 @@ def repr_to_np(board_str: str) -> np.ndarray:
     return np.array(board_str.split(), dtype=np.int8).reshape((4, 8))
 
 class Node:
-    direction_count = {True: {RIGHT: 5, UP: 3, DOWN: 3, LEFT: 0},
-                       False: {LEFT: 5, UP: 3, DOWN: 3, RIGHT: 0}}
+    direction_count = {True: {RIGHT: 3, UP: 1, DOWN: 1, LEFT: 0},
+                       False: {LEFT: 3, UP: 1, DOWN: 1, RIGHT: 0}}
 
     def __init__(self, isFirst: bool, mode: str, board, currentRound: int,
                  evaluate, minimax: bool, alpha=-INF,
@@ -225,8 +225,7 @@ class Player:
             self.tree = self.tree.release(prev_decision)
             if self.tree == None:
                 # 不幸没有猜中, 重新建设搜索树
-                mode_without_bar = mode
-                mode_without_bar.lstrip('_')  # 搞掉烦人的 '_'
+                mode_without_bar = mode.lstrip('_')  # 搞掉烦人的 '_'
                 self.tree = Node(self._isFirst, mode_without_bar, board.copy(), currentRound,
                                  self.evaluate, False, depth=0)
                 if mode_without_bar == POSITION_MODE:
