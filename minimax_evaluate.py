@@ -4,6 +4,7 @@ evaluate(board, isFirst) 返回 isFirst 方与 not isFirst 方的局面之差
 import random
 import math
 import operator
+import numpy as np
 
 POSITION_MODE = 'position'
 DIRECTION_MODE = 'direction'
@@ -14,9 +15,15 @@ UP, DOWN, LEFT, RIGHT = 0, 1, 2, 3
 
 INF = float('inf')
 
+def repr_to_np(board_str: str) -> np.ndarray:
+    '''将棋盘的字符串转变为 numpy 数组
+    返回: numpy 的 int8 数组
+    '''
+    return np.array(board_str.split(), dtype=np.int8).reshape((4, 8))
+
 class Node:
-    direction_count = {True: {RIGHT: 5, UP: 3, DOWN: 3, LEFT: 0},
-                       False: {LEFT: 5, UP: 3, DOWN: 3, RIGHT: 0}}
+    direction_count = {True: {RIGHT: 3, UP: 1, DOWN: 1, LEFT: 0},
+                       False: {LEFT: 3, UP: 1, DOWN: 1, RIGHT: 0}}
 
     def __init__(self, isFirst: bool, mode: str, board, currentRound: int,
                  evaluate, minimax: bool, alpha=-INF,
@@ -171,13 +178,13 @@ class Node:
             if pos:
                 # 如果可以在自己这边放
                 res.append(('add', self.isFirst ^ self.minimax, pos))
-            if not res or self.currentRound > 200:
+            if not res or self.currentRound > 250:
                 # 如果局势比较晚, 或者不可以在自己这里放, 那么随机搞两个
                 '''TODO: 更好的获得位置的方法
                 '''
                 nones = self.board.getNone(self.isFirst == self.minimax)
                 random.shuffle(nones)
-                for pos in nones[:2 if self.currentRound < 250 else 3]:
+                for pos in nones[:16]:
                     res.append(('add', self.isFirst == self.minimax, pos))
         else:
             '''TODO 对方进攻/防守策略判断及优化'''
@@ -250,105 +257,75 @@ class Player:
         '''估值函数 TODO 返回 isFirst 方与 not isFirst 方的局面之差
         TODO 先后手是否可以两个版本?
         '''
-        def inBoard(position):
-            return position[0] in range(4) and position[1] in range(8)
+        '''
+        def func(x): return 1 << (3 * x)
+        res = sum(map(func, board.getScore(isFirst))) - .125 * sum(map(func, board.getScore(not isFirst)))
+        return res'''
+        npBoard = repr_to_np(str(board))
+        def basicValue(npboard, belong):  # 基本分值:
+            if belong:
+                myBoard = np.maximum(npBoard, 0)
+                return np.sum(8**myBoard[...,:4]+8**myBoard[...,4:]*2)
+            else:
+                myBoard = np.abs(np.minimum(npBoard, 0))
+                return np.sum(8**myBoard[...,:4]*2+8**myBoard[...,4:])
 
-        def basicValue(board, belong):#取前三大棋子值之和为基本分值:
-            return sum(map(math.log2, board.getScore(belong)))
+        def movability(board, belong):  # 棋盘可移动性：由移动后空格数决定
+            length = len(board.getNone(belong))
+            if length <= 4:
+                return 2**len(board.getNone(belong))
+            else:
+                return 0
 
-        def movability(board, belong):#棋盘可移动性：由移动后空格数决定
-            return len(board.getNone(belong))
+        def smoothness(npBoard,belong):
+            if belong:
+                myBoard = np.abs(npBoard[...,:4])
+            else:
+                myBoard = np.abs(npBoard[...,4:8])
+            return 2**(2*np.std(myBoard[myBoard>0]))
 
-        def smoothness(board, belong):#指每个方块与其直接相邻方块数值的差越小越平滑
-            smoothness=0
-            directions=[(0,1),(0,-1),(1,0),(-1,0)]
-            if belong==True:a,b=0,4
-            else:a,b=4,8
-            for row in range(4):
-                for col in range(a,b): #考虑几列合适？
-                    pos=(row,col)
-                    if board.getValue(pos)!=0 and board.getBelong(pos)==belong:
-                        value=math.log2(board.getValue(pos))
-                        for direction in directions:
-                            nextPos=(row+direction[0],col+diretion[1])
-                            if inBoard(nextPos) and board.getValue(pos)!=0 and board.getBelong(pos)==belong:
-                                nextValue=math.log2(board.getValue(nextPos))
-                                smoothness-=abs(value-nextValue)
-            return smoothness
-
-        def monotonicity(board, belong):#方块从左到右、从上到下均遵从递增或递减单调性分值
-            monotonicities =[0, 0, 0, 0]#依次代表左右上下
-            if belong: a, b = 0, 4
-            else: a, b = 4, 8
+        def monotonicity(npBoard,belong):#方块从左到右、从上到下均遵从递增或递减单调性分值
+            if belong:
+                myBoard = np.abs(npBoard[...,:4])
+            else:
+                myBoard = np.abs(npBoard[...,4:8])
+            monotonicities=0
             #左右方向
-            for row in range(4):
-                current_col = a
-                next_col = a+1
-                while next_col < b:
-                    #跳过空格
-                    while next_col < b and board.getBelong((row, next_col))==belong and board.getValue((row, next_col)) == 0:
-                        next_col += 1
-                    if next_col == b: next_col -= 1
-                    if board.getValue((row, current_col)) and board.getBelong((row, current_col)):
-                        currentValue = math.log2(board.getValue((row, current_col)))
-                    else: currentValue = 0
-                    if board.getValue((row, next_col)) and board.getBelong((row, next_col)):
-                        nextValue = math.log2(board.getBelong((row, next_col)))
-                    else: nextValue = 0
-                    if currentValue >= nextValue:
-                        monotonicities[0] += currentValue - nextValue
-                    elif currentValue <= nextValue:
-                        monotonicities[1] += nextValue - currentValue
-                    current_col = next_col
-                    next_col += 1
+            for i in range(4):
+                col = myBoard[i]
+                a = col[col>0]
+                if len(a) <= 1:
+                    continue
+                delta = np.abs(a[:-1] - a[1:])
+                for j in range(len(delta)):
+                    if delta[j] <= 1:
+                        monotonicities += 2**a[j] + 2**a[j+1]
+                    else:
+                        monotonicities -= 2**delta[j]
             #上下方向
-            for col in range(a, b):
-                current_row = 0
-                next_row = 1
-                while next_row < 4:
-                    while next_row < 4 and board.getBelong((next_row,col))==belong and board.getValue((next_row, col)) == 0:
-                        next_row += 1
-                    if next_row == 4: next_row -= 1
-                    if board.getValue((current_row, col)) and board.getBelong((current_row, col)):
-                        currentValue = math.log2(board.getValue((current_row, col)))
-                    else: currentValue = 0
-                    if board.getValue((next_row,col)) and board.getBelong((next_row,col)):
-                        nextValue = math.log2(board.getBelong((next_row,col)))
-                    else: nextValue = 0
-                    if currentValue >= nextValue:
-                        monotonicities[2] += currentValue - nextValue
-                    elif currentValue <= nextValue:
-                        monotonicities[3] += nextValue - currentValue
-                    current_row = next_row
-                    next_row += 1
+            for i in range(4):
+                row = myBoard[:,i]
+                a = row[row>0]
+                if len(a) <= 1:
+                    continue
+                delta = np.abs(a[:-1] - a[1:])
+                for j in range(len(delta)):
+                    if delta[j] <= 1:
+                        monotonicities += 2**a[j] + 2**a[j+1]
+                    else:
+                        monotonicities -= 2**delta[j]
+            return monotonicities
 
-            return abs(monotonicities[0]-monotonicities[1])+abs(monotonicities[2]-monotonicities[3])
-
-        def layoutValue(board, belong):#大数靠边布局价值
-            max_value = max(board.getScore(belong))
-            layoutvalue = math.log2(max_value)/2#削减或增强大数价值
-            if belong: a, b = 0, 4
-            else: a, b = 4, 8
-            #检测是否在内围,若在则此价值取负
-            for row in range(1,3):
-                for col in range(a+1, b-1):
-                    pos=(row,col)
-                    if board.getBelong(pos)==belong and board.getValue(pos)==max_value:
-                        layoutvalue *= -1
-                        break
-            return layoutvalue
-        smoothweight = 0.1
-        monoweight = 1.0
-        moveweight = 2.7
+        smoothweight = 1
+        monoweight = 0.5
+        moveweight = 0.5
         basicweight = 1.0
-        layoutweight = 1.0
-        return smoothweight*basicValue(board, isFirst) \
-        + monoweight*monotonicity(board, isFirst) \
+
+        return basicweight*basicValue(npBoard, isFirst) \
+        + monoweight*monotonicity(npBoard,isFirst) \
         + moveweight*movability(board, isFirst) \
-        + basicweight*basicValue(board, isFirst) \
-        + layoutweight*layoutValue(board, isFirst) \
-        - .25*(smoothweight*basicValue(board, not isFirst) \
-        + monoweight*monotonicity(board, not isFirst) \
+        + smoothweight*smoothness(npBoard,isFirst) \
+        - .25*(basicweight*basicValue(npBoard, not isFirst) \
+        + monoweight*monotonicity(npBoard, not isFirst) \
         + moveweight*movability(board, not isFirst) \
-        + basicweight*basicValue(board, not isFirst) \
-        + layoutweight*layoutValue(board, not isFirst))\
+        + smoothweight*smoothness(npBoard, not isFirst))
