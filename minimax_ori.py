@@ -3,7 +3,6 @@ evaluate(board, isFirst) 返回 isFirst 方与 not isFirst 方的局面之差
 '''
 import random
 import operator
-import numpy as np
 
 POSITION_MODE = 'position'
 DIRECTION_MODE = 'direction'
@@ -14,15 +13,9 @@ UP, DOWN, LEFT, RIGHT = 0, 1, 2, 3
 
 INF = float('inf')
 
-def repr_to_np(board_str: str) -> np.ndarray:
-    '''将棋盘的字符串转变为 numpy 数组
-    返回: numpy 的 int8 数组
-    '''
-    return np.array(board_str.split(), dtype=np.int8).reshape((4, 8))
-
 class Node:
-    direction_count = {True: {RIGHT: 3, UP: 1, DOWN: 1, LEFT: 0},
-                       False: {LEFT: 3, UP: 1, DOWN: 1, RIGHT: 0}}
+    direction_count = {True: {RIGHT: 5, UP: 3, DOWN: 3, LEFT: 0},
+                       False: {LEFT: 5, UP: 3, DOWN: 3, RIGHT: 0}}
 
     def __init__(self, isFirst: bool, mode: str, board, currentRound: int,
                  evaluate, minimax: bool, alpha=-INF,
@@ -163,68 +156,6 @@ class Node:
                 return op, node
         raise RuntimeError('no decision')
 
-    def find_opp_pos(self):
-        '''获得在对手领地下棋的可选位置列表
-        按估值从大到小排列. 若不可下, 返回 `[]`
-        '''
-        nones = self.board.getNone(not self.isFirst)
-
-        if not nones:  # 不存在可下的位置
-            return []
-
-        position_dic = {}
-
-        for pos in nones:
-
-            y, x = pos
-            #横竖方向遇到的第一个对方棋子
-            x_left, x_right, y_up, y_down = 0, 0, 0, 0
-            #横向遇到的第一个我方棋子
-            x_ours=0
-            '''TODO 有没有可能合并 for 循环. 仿佛改成 while 也不错
-            '''
-
-            for i in range(x - 1, -1, -1):  # 获取四个邻域值
-                if x_left:
-                    break
-                if self.board.getBelong((y, i)) == self.isFirst:
-                    x_ours = self.board.getValue((y, i))
-                    break
-                x_left = self.board.getValue((y, i))
-
-            for i in range(x + 1, 8):
-                if x_right:
-                    break
-                if self.board.getBelong((y, i)) == self.isFirst:
-                    x_ours = self.board.getValue((y, i))
-                    break
-                x_right = self.board.getValue((y, i))
-
-            for j in range(y - 1, -1, -1):
-                if self.board.getBelong((x, j)) == self.isFirst or y_down:
-                    break
-                y_down = self.board.getValue((j, x))
-
-            for j in range(y + 1, 4):
-                if self.board.getBelong((x, j)) == self.isFirst or y_up:
-                    break
-                y_up = self.board.getValue((j, x))
-
-            score = x_left + x_right + y_up + y_down  # 先算四个邻域总和
-            if x_right == x_left:  # 如果同一方向上有相等（可合并）的，再加一遍
-                score += 2 * x_right
-            if y_down == y_up:
-                score += 2 * y_down
-            position_dic[pos] = score
-
-            # 对方可吞并，才考虑在内吗？
-            if x_ours == x_left or x_ours == x_right:
-                if x_ours > score:
-                    # 权重比对方自己合并要高
-                    position_dic[pos] = x_ours * 5
-
-        return sorted(position_dic, key=lambda k: position_dic[k], reverse=True)
-
     def operations(self) -> list:
         '''返回可用操作的 [(名字, *调用传参), ...]
         '''
@@ -239,14 +170,14 @@ class Node:
             if pos:
                 # 如果可以在自己这边放
                 res.append(('add', self.isFirst ^ self.minimax, pos))
-
-            '''TODO: 更好的获得位置的方法
-            '''
-            temp = self.find_opp_pos()
-
-            if temp:
-                res.append(('add', self.isFirst == self.minimax, temp[0]))
-
+            if not res or self.currentRound > 200:
+                # 如果局势比较晚, 或者不可以在自己这里放, 那么随机搞两个
+                '''TODO: 更好的获得位置的方法
+                '''
+                nones = self.board.getNone(self.isFirst == self.minimax)
+                random.shuffle(nones)
+                for pos in nones[:2 if self.currentRound < 250 else 3]:
+                    res.append(('add', self.isFirst == self.minimax, pos))
         else:
             '''TODO 对方进攻/防守策略判断及优化'''
             if self.minimax:
