@@ -272,17 +272,17 @@ class Player:
 
         def movability(board, belong):  # 棋盘可移动性：由移动后空格数决定
             length = len(board.getNone(belong))
-            if length <= 4:
-                return 2**len(board.getNone(belong))
+            if length <= 6:
+                return 2**(2*length)
             else:
                 return 0
 
         def smoothness(npBoard,belong):
             if belong:
-                myBoard = np.abs(npBoard[...,:4])
+                myBoard = 8**np.abs(npBoard[...,:4])
             else:
-                myBoard = np.abs(npBoard[...,4:8])
-            return 2**(2*np.std(myBoard[myBoard>0]))
+                myBoard = 8**np.abs(npBoard[...,4:8])
+            return np.std(myBoard[myBoard>0])
 
         def monotonicity(npBoard,belong):#方块从左到右、从上到下均遵从递增或递减单调性分值
             if belong:
@@ -299,9 +299,9 @@ class Player:
                 delta = np.abs(a[:-1] - a[1:])
                 for j in range(len(delta)):
                     if delta[j] <= 1:
-                        monotonicities += 2**a[j] + 2**a[j+1]
+                        monotonicities += 4**a[j] + 4**a[j+1]
                     else:
-                        monotonicities -= 2**delta[j]
+                        monotonicities -= 4**delta[j]
             #上下方向
             for i in range(4):
                 row = myBoard[:,i]
@@ -311,14 +311,14 @@ class Player:
                 delta = np.abs(a[:-1] - a[1:])
                 for j in range(len(delta)):
                     if delta[j] <= 1:
-                        monotonicities += 2**a[j] + 2**a[j+1]
+                        monotonicities += 4**a[j] + 4**a[j+1]
                     else:
-                        monotonicities -= 2**delta[j]
+                        monotonicities -= 4**delta[j]
             return monotonicities
 
-        smoothweight = 1
-        monoweight = 0.5
-        moveweight = 0.5
+        smoothweight = 2.0
+        monoweight = 2.0
+        moveweight = 3.0
         basicweight = 1.0
 
         return basicweight*basicValue(npBoard, isFirst) \
