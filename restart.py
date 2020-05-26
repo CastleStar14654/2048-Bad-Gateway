@@ -287,10 +287,20 @@ class Player:
         '''估值函数 TODO 返回 isFirst 方与 not isFirst 方的局面之差
         TODO 先后手是否可以两个版本?
         '''
+        def evaluate(self, board, isFirst: bool):
+        '''估值函数 TODO 返回 isFirst 方与 not isFirst 方的局面之差
+        TODO 先后手是否可以两个版本?
+        '''
         def func(x): return 1 << (2 * x)
         res = sum(map(func, board.getScore(isFirst))) - sum(map(func, board.getScore(not isFirst)))
-        # for row in range(4):
-        #     for col in range(4, 8) if isFirst else range(4):
-        #         if board.getBelong((row, col)) == isFirst:
-        #             res += 1 << (board.getValue((row, col)))
+        boardList = board.getRaw()
+        for row in range(4):
+            if isFirst:
+                for col in range(4, 7):
+                    if boardList[row][col][1]== isFirst:
+                        res += 1 << boardList[row][col][0]
+            else:
+                for col in range(2, 4):
+                    if boardList[row][col][1]== isFirst:
+                        res += 1 << boardList[row][col][0]
         return res
