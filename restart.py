@@ -205,10 +205,14 @@ class Node:
                 # 如果可以在自己这边放
                 res.append(('add', self.isFirst ^ self.minimax, pos))
 
-            if not res or self.currentRound > 200 or self.minimax:
-                temp = self.find_opp_pos()
-                if temp:
-                    res.append(('add', self.isFirst == self.minimax, temp[0]))
+            if not res:
+                # 如果局势比较晚, 或者不可以在自己这里放, 那么随机搞两个
+                '''TODO: 更好的获得位置的方法
+                '''
+                nones = self.board.getNone(self.isFirst == self.minimax)
+                random.shuffle(nones)
+                if nones:
+                    res.append(('add', self.isFirst == self.minimax, nones[0]))
 
         else:
             '''TODO 对方进攻/防守策略判断及优化'''
@@ -246,23 +250,29 @@ class Player:
         self.tree = Node(self._isFirst, mode_without_bar, board.copy(), currentRound,
                          self.evaluate, False, depth=0)
         if mode_without_bar == POSITION_MODE:
-            self.tree.deepen(
-                [(POSITION_MODE, currentRound), (DIRECTION_MODE, currentRound),
-                (DIRECTION_MODE, currentRound), (POSITION_MODE, currentRound + 1),
-                (POSITION_MODE, currentRound + 1), (DIRECTION_MODE, currentRound + 1)]
-                if self._isFirst
-                else [(DIRECTION_MODE, currentRound), (DIRECTION_MODE, currentRound),
+            if self._isFirst:
+                self.tree.deepen(
+                    [(POSITION_MODE, currentRound), (DIRECTION_MODE, currentRound),
+                    (DIRECTION_MODE, currentRound), (POSITION_MODE, currentRound + 1),
+                    (POSITION_MODE, currentRound + 1), (DIRECTION_MODE, currentRound + 1)])
+            else:
+                self.tree.deepen(
+                    [(DIRECTION_MODE, currentRound), (DIRECTION_MODE, currentRound),
                     (POSITION_MODE, currentRound + 1), (POSITION_MODE, currentRound + 1),
                     (DIRECTION_MODE, currentRound + 1), (DIRECTION_MODE, currentRound + 1)])
         else:
             if self._isFirst:
                 self.tree.deepen(
                     [(DIRECTION_MODE, currentRound), (POSITION_MODE, currentRound + 1),
-                    (POSITION_MODE, currentRound + 1), (DIRECTION_MODE, currentRound + 1)])
+                    (POSITION_MODE, currentRound + 1), (DIRECTION_MODE, currentRound + 1),
+                    (DIRECTION_MODE, currentRound + 1), (POSITION_MODE, currentRound + 2),
+                    (POSITION_MODE, currentRound + 2), (DIRECTION_MODE, currentRound + 2)])
             else:
                 self.tree.deepen(
                     [(POSITION_MODE, currentRound + 1), (POSITION_MODE, currentRound + 1),
-                    (DIRECTION_MODE, currentRound + 1), (DIRECTION_MODE, currentRound + 1)])
+                    (DIRECTION_MODE, currentRound + 1), (DIRECTION_MODE, currentRound + 1),
+                    (POSITION_MODE, currentRound + 2), (POSITION_MODE, currentRound + 2),
+                    (DIRECTION_MODE, currentRound + 2), (DIRECTION_MODE, currentRound + 2)])
 
         if mode.startswith('_'):
             # 空操作, 我相信这棵树已经知道自己此时无路可走
@@ -277,10 +287,10 @@ class Player:
         '''估值函数 TODO 返回 isFirst 方与 not isFirst 方的局面之差
         TODO 先后手是否可以两个版本?
         '''
-        def func(x): return 1 << (3 * x)
-        res = sum(map(func, board.getScore(isFirst))) - .9 * sum(map(func, board.getScore(not isFirst)))
-        for row in range(4):
-            for col in range(4, 8) if isFirst else range(4):
-                if board.getBelong((row, col)) == isFirst:
-                    res += 1 << board.getValue((row, col))
+        def func(x): return 1 << (2 * x)
+        res = sum(map(func, board.getScore(isFirst))) - sum(map(func, board.getScore(not isFirst)))
+        # for row in range(4):
+        #     for col in range(4, 8) if isFirst else range(4):
+        #         if board.getBelong((row, col)) == isFirst:
+        #             res += 1 << (board.getValue((row, col)))
         return res
