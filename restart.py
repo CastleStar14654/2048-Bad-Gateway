@@ -210,8 +210,8 @@ class Node:
                 '''TODO: 更好的获得位置的方法
                 '''
                 nones = self.board.getNone(self.isFirst == self.minimax)
-                random.shuffle(nones)
                 if nones:
+                    random.shuffle(nones)
                     res.append(('add', self.isFirst == self.minimax, nones[0]))
 
         else:
@@ -295,10 +295,14 @@ class Player:
         '''估值函数 TODO 返回 isFirst 方与 not isFirst 方的局面之差
         TODO 先后手是否可以两个版本?
         '''
-        def func(x): return 1 << (2 * x)
+        def func(x): return 1 << (3 * x)
         res = sum(map(func, board.getScore(isFirst))) - sum(map(func, board.getScore(not isFirst)))
         boardList = board.getRaw()
         for col in range(4, 6) if isFirst else range(2, 4):
+            for row in range(4):
+                if boardList[row][col][1] == isFirst:
+                    res += 1 << (3 * boardList[row][col][0])
+        for col in range(6, 8) if isFirst else range(2):
             for row in range(4):
                 if boardList[row][col][1] == isFirst:
                     res += 1 << (2 * boardList[row][col][0])
