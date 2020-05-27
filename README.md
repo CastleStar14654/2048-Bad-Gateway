@@ -25,9 +25,12 @@ For more information about the game, c.f. submodule [`sessdsa.2048@pkulab409`](h
 4. 到时候写报告
 5. 最后一层用蒙特卡洛树？
 
-# KPI 列表
+# 2020年5月27日 情况
 
-TODO
+1. 每一次都重新建立搜索树，同时，在剩余时间少于0.5秒时减少搜索深度。目前在每一回合都有效搜索时用时4.5秒左右
+2. 写了一个 `find_opp_pos` 寻找在对方处落子的最佳位置. 但由于收益率较小，暂弃.
+3. 对估值函数方面, 由于时间限制, 用回了简单版本
+
 
 ## How to clone this repo with its submodule
 Open console, checkout to where you intends to save the repo, then
