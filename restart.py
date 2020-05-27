@@ -221,7 +221,6 @@ class Node:
                 d = self.direction_count[not self.isFirst]
                 d = sorted(d, key=lambda x: d[x], reverse=True)
             else:
-                # 自己, 优先进攻
                 d = (RIGHT, UP, DOWN, LEFT) \
                     if self.isFirst \
                     else (LEFT, UP, DOWN, RIGHT)
@@ -260,6 +259,15 @@ class Player:
                     [(DIRECTION_MODE, currentRound), (DIRECTION_MODE, currentRound),
                     (POSITION_MODE, currentRound + 1), (POSITION_MODE, currentRound + 1),
                     (DIRECTION_MODE, currentRound + 1), (DIRECTION_MODE, currentRound + 1)])
+        elif board.getTime(self._isFirst) < .5:
+            if self._isFirst:
+                self.tree.deepen(
+                    [(DIRECTION_MODE, currentRound), (POSITION_MODE, currentRound + 1),
+                    (POSITION_MODE, currentRound + 1), (DIRECTION_MODE, currentRound + 1)])
+            else:
+                self.tree.deepen(
+                    [(POSITION_MODE, currentRound + 1), (POSITION_MODE, currentRound + 1),
+                    (DIRECTION_MODE, currentRound + 1), (DIRECTION_MODE, currentRound + 1)])
         else:
             if self._isFirst:
                 self.tree.deepen(
@@ -287,20 +295,11 @@ class Player:
         '''估值函数 TODO 返回 isFirst 方与 not isFirst 方的局面之差
         TODO 先后手是否可以两个版本?
         '''
-        def evaluate(self, board, isFirst: bool):
-        '''估值函数 TODO 返回 isFirst 方与 not isFirst 方的局面之差
-        TODO 先后手是否可以两个版本?
-        '''
         def func(x): return 1 << (2 * x)
         res = sum(map(func, board.getScore(isFirst))) - sum(map(func, board.getScore(not isFirst)))
         boardList = board.getRaw()
-        for row in range(4):
-            if isFirst:
-                for col in range(4, 7):
-                    if boardList[row][col][1]== isFirst:
-                        res += 1 << boardList[row][col][0]
-            else:
-                for col in range(2, 4):
-                    if boardList[row][col][1]== isFirst:
-                        res += 1 << boardList[row][col][0]
+        for col in range(4, 6) if isFirst else range(2, 4):
+            for row in range(4):
+                if boardList[row][col][1] == isFirst:
+                    res += 1 << (2 * boardList[row][col][0])
         return res
