@@ -14,6 +14,8 @@ UP, DOWN, LEFT, RIGHT = 0, 1, 2, 3
 
 INF = float('inf')
 
+MERGE_INTERFERENCE_THRESHOLD = 4 # 仅处理 2^5 及以上的合并
+
 
 def repr_to_np(board_str: str) -> np.ndarray:
     '''将棋盘的字符串转变为 numpy 数组
@@ -172,7 +174,7 @@ def find_pos(board_raw: list, to_belong: bool, direction: int) -> tuple:
     '''寻找在 `to_belong` 方落子的位置。若无法阻止合并，返回 None
     board_raw: 棋盘原始数据，为嵌套列表
     direction: 为已知对方占优的合并方向
-    仅处理对方至少是两个2^4间的合并
+    仅处理对方至少是两个2^x间的合并, 其中 x 为 `MERGE_INTERFERENCE_THRESHOLD + 1`
     '''
     prev_value = -1
     prev_pos = None
@@ -184,7 +186,7 @@ def find_pos(board_raw: list, to_belong: bool, direction: int) -> tuple:
                 value = board_raw[row][col][0]
                 if value:
                     # 非空
-                    if value >= 4 and value == prev_value and row - prev_pos[0] > 1:
+                    if value > MERGE_INTERFERENCE_THRESHOLD and value == prev_value and row - prev_pos[0] > 1:
                         return row - 1, col
                     prev_value = value
                     prev_pos = row, col
@@ -199,7 +201,7 @@ def find_pos(board_raw: list, to_belong: bool, direction: int) -> tuple:
                 value = board_raw[row][col][0]
                 if value:
                     # 非空
-                    if value >= 4 and value == prev_value and col - prev_pos[1] > 1:
+                    if value > MERGE_INTERFERENCE_THRESHOLD and value == prev_value and col - prev_pos[1] > 1:
                         return row, col - 1
                     prev_value = value
                     prev_pos = row, col
@@ -244,7 +246,7 @@ class Player:
                 new_score = sum(board_copy.getScore(self._isFirst)) + \
                     sum(board_copy.getScore(not self._isFirst))
                 delta = old_score - new_score
-                if delta > 2:
+                if delta >= MERGE_INTERFERENCE_THRESHOLD:
                     dir_merge[direction] = delta
                 direction += 1
 
