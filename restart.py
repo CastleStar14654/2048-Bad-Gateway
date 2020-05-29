@@ -260,6 +260,7 @@ class Player:
                     (POSITION_MODE, currentRound + 1), (POSITION_MODE, currentRound + 1),
                     (DIRECTION_MODE, currentRound + 1), (DIRECTION_MODE, currentRound + 1)])
         elif board.getTime(self._isFirst) < .5:
+            # @Mr.Luo Zhixiang
             if self._isFirst:
                 self.tree.deepen(
                     [(DIRECTION_MODE, currentRound), (POSITION_MODE, currentRound + 1),
