@@ -14,11 +14,13 @@ UP, DOWN, LEFT, RIGHT = 0, 1, 2, 3
 
 INF = float('inf')
 
+
 def repr_to_np(board_str: str) -> np.ndarray:
     '''将棋盘的字符串转变为 numpy 数组
     返回: numpy 的 int8 数组
     '''
     return np.array(board_str.split(), dtype=np.int8).reshape((4, 8))
+
 
 class Node:
     direction_count = {True: {RIGHT: 3, UP: 1, DOWN: 1, LEFT: 0},
@@ -56,17 +58,12 @@ class Node:
         self.ab_attr = 'beta' if self.minimax else 'alpha'
         self.comp = operator.lt if self.minimax else operator.gt
 
-    def release(self, operation):
-        '''选取操作 operation 对应的分支
-        返回新的树根; 如果该操作未被我们考虑, 返回 None
+    def count_direction(self, operation):
+        '''记录对面对方向的操作频数
         '''
         if len(operation) == 1:  # 我也不知道为啥方向会被套进元组里
             operation = operation[0]
             self.direction_count[not self.isFirst][operation] += 1
-        res = self.nodes.get(operation, None)
-        if res:
-            res.depth = self.depth - 1
-        return res
 
     def deepen(self, modes: list):
         '''加深并搜索树. modes 为新的层的 mode
@@ -89,7 +86,8 @@ class Node:
                     # 下面与之前类似
                     setattr(self.nodes[op_func[2]],
                             self.ab_attr, getattr(self, self.ab_attr))
-                    new_value = self.nodes[op_func[2]].deepen(modes[1:])  # 继续往深层搜
+                    new_value = self.nodes[op_func[2]].deepen(
+                        modes[1:])  # 继续往深层搜
                     if self.comp(new_value, getattr(self, self.ab_attr)):
                         setattr(self, self.ab_attr, new_value)
                     if self.alpha >= self.beta:  # 剪枝条件
@@ -127,68 +125,6 @@ class Node:
                 node.depth = self.depth - 1
                 return op, node
         raise RuntimeError('no decision')
-
-    def find_opp_pos(self):
-        '''获得在对手领地下棋的可选位置列表
-        按估值从大到小排列. 若不可下, 返回 `[]`
-        '''
-        nones = self.board.getNone(not self.isFirst)
-
-        if not nones:  # 不存在可下的位置
-            return []
-
-        position_dic = {}
-
-        for pos in nones:
-
-            y, x = pos
-            #横竖方向遇到的第一个对方棋子
-            x_left, x_right, y_up, y_down = 0, 0, 0, 0
-            #横向遇到的第一个我方棋子
-            x_ours=0
-            '''TODO 有没有可能合并 for 循环. 仿佛改成 while 也不错
-            '''
-
-            for i in range(x - 1, -1, -1):  # 获取四个邻域值
-                if x_left:
-                    break
-                if self.board.getBelong((y, i)) == self.isFirst:
-                    x_ours = self.board.getValue((y, i))
-                    break
-                x_left = self.board.getValue((y, i))
-
-            for i in range(x + 1, 8):
-                if x_right:
-                    break
-                if self.board.getBelong((y, i)) == self.isFirst:
-                    x_ours = self.board.getValue((y, i))
-                    break
-                x_right = self.board.getValue((y, i))
-
-            for j in range(y - 1, -1, -1):
-                if self.board.getBelong((x, j)) == self.isFirst or y_down:
-                    break
-                y_down = self.board.getValue((j, x))
-
-            for j in range(y + 1, 4):
-                if self.board.getBelong((x, j)) == self.isFirst or y_up:
-                    break
-                y_up = self.board.getValue((j, x))
-
-            score = x_left + x_right + y_up + y_down  # 先算四个邻域总和
-            if x_right == x_left:  # 如果同一方向上有相等（可合并）的，再加一遍
-                score += 2 * x_right
-            if y_down == y_up:
-                score += 2 * y_down
-            position_dic[pos] = score
-
-            # 对方可吞并，才考虑在内吗？
-            if x_ours == x_left or x_ours == x_right:
-                if x_ours > score:
-                    # 权重比对方自己合并要高
-                    position_dic[pos] = x_ours * 5
-
-        return sorted(position_dic, key=lambda k: position_dic[k], reverse=True)
 
     def operations(self) -> list:
         '''返回可用操作的 [(名字, *调用传参), ...]
@@ -232,6 +168,47 @@ class Node:
         return repr(self.mode) + repr(self.nodes)
 
 
+def find_pos(board_raw: list, to_belong: bool, direction: int) -> tuple:
+    '''寻找在 `to_belong` 方落子的位置。若无法阻止合并，返回 None
+    board_raw: 棋盘原始数据，为嵌套列表
+    direction: 为已知对方占优的合并方向
+    仅处理对方至少是两个2^4间的合并
+    '''
+    prev_value = -1
+    prev_pos = None
+    if direction < 2:
+        # 上下方向
+        cols = range(4) if to_belong else range(4, 8)
+        for col in cols:
+            for row in range(4):
+                value = board_raw[row][col][0]
+                if value:
+                    # 非空
+                    if value >= 4 and value == prev_value and row - prev_pos[0] > 1:
+                        return row - 1, col
+                    prev_value = value
+                    prev_pos = row, col
+            # 重置
+            prev_value = -1
+            prev_pos = None
+    else:
+        # 左右方向
+        cols = range(5) if to_belong else range(3, 8)
+        for row in range(4):
+            for col in cols:
+                value = board_raw[row][col][0]
+                if value:
+                    # 非空
+                    if value >= 4 and value == prev_value and col - prev_pos[1] > 1:
+                        return row, col - 1
+                    prev_value = value
+                    prev_pos = row, col
+            # 重置
+            prev_value = -1
+            prev_pos = None
+    return None
+
+
 class Player:
     def __init__(self, isFirst: bool, array: list) -> None:
         self._isFirst = isFirst
@@ -240,64 +217,91 @@ class Player:
                          self.evaluate, False, depth=0)
 
     def output(self, currentRound: int, board, mode: str):
-        # 获得上部操作, 进入搜索树相应分支
+        # 获得上部操作, 记进小本本
         prev_decision = board.getDecision(not self._isFirst)
-        self.tree = self.tree.release(prev_decision)
+        self.tree.count_direction(prev_decision)
+
+        # 直接返回, 不浪费算力
+        if mode[0] == '_':
+            return
 
         # 建设搜索树
-        mode_without_bar = mode.lstrip('_')  # 搞掉烦人的 '_'
-        self.tree = Node(self._isFirst, mode_without_bar, board.copy(), currentRound,
+        decision = None
+        self.tree = Node(self._isFirst, mode, board.copy(), currentRound,
                          self.evaluate, False, depth=0)
-        if mode_without_bar == POSITION_MODE:
-            if self._isFirst:
-                self.tree.deepen(
-                    [(POSITION_MODE, currentRound), (DIRECTION_MODE, currentRound),
-                    (DIRECTION_MODE, currentRound), (POSITION_MODE, currentRound + 1),
-                    (POSITION_MODE, currentRound + 1), (DIRECTION_MODE, currentRound + 1)])
-            else:
-                self.tree.deepen(
-                    [(DIRECTION_MODE, currentRound), (DIRECTION_MODE, currentRound),
-                    (POSITION_MODE, currentRound + 1), (POSITION_MODE, currentRound + 1),
-                    (DIRECTION_MODE, currentRound + 1), (DIRECTION_MODE, currentRound + 1)])
+        if mode == POSITION_MODE:
+            # 尝试看有没有高收益的阻碍对方合并的地方
+            # 寻找对面的大子合并方向
+            old_score = sum(board.getScore(self._isFirst)) + \
+                sum(board.getScore(not self._isFirst))
+            dir_merge = {}  # {方向: 合并后的sum(getScore)减少了多少}
+            direction = 0
+            while direction < 4:
+                board_copy = board.copy()
+                if board_copy.move(not self._isFirst, direction) == False:
+                    direction += 1
+                    continue
+                new_score = sum(board_copy.getScore(self._isFirst)) + \
+                    sum(board_copy.getScore(not self._isFirst))
+                delta = old_score - new_score
+                if delta > 2:
+                    dir_merge[direction] = delta
+                direction += 1
+
+            if dir_merge:
+                max_dir = max(dir_merge, key=lambda k: dir_merge[k])
+                decision = find_pos(board.getRaw(), not self._isFirst, max_dir)
+
+            if decision == None:
+                # 搜六层
+                if self._isFirst:
+                    self.tree.deepen(
+                        [(POSITION_MODE, currentRound), (DIRECTION_MODE, currentRound),
+                         (DIRECTION_MODE, currentRound), (POSITION_MODE, currentRound + 1),
+                         (POSITION_MODE, currentRound + 1), (DIRECTION_MODE, currentRound + 1)])
+                else:
+                    self.tree.deepen(
+                        [(DIRECTION_MODE, currentRound), (DIRECTION_MODE, currentRound),
+                         (POSITION_MODE, currentRound + 1), (POSITION_MODE, currentRound + 1),
+                         (DIRECTION_MODE, currentRound + 1), (DIRECTION_MODE, currentRound + 1)])
         elif board.getTime(self._isFirst) < .5:
             # @Mr.Luo Zhixiang
+            # 搜四层
             if self._isFirst:
                 self.tree.deepen(
                     [(DIRECTION_MODE, currentRound), (POSITION_MODE, currentRound + 1),
-                    (POSITION_MODE, currentRound + 1), (DIRECTION_MODE, currentRound + 1)])
+                     (POSITION_MODE, currentRound + 1), (DIRECTION_MODE, currentRound + 1)])
             else:
                 self.tree.deepen(
                     [(POSITION_MODE, currentRound + 1), (POSITION_MODE, currentRound + 1),
-                    (DIRECTION_MODE, currentRound + 1), (DIRECTION_MODE, currentRound + 1)])
+                     (DIRECTION_MODE, currentRound + 1), (DIRECTION_MODE, currentRound + 1)])
         else:
+            # 搜八层
             if self._isFirst:
                 self.tree.deepen(
                     [(DIRECTION_MODE, currentRound), (POSITION_MODE, currentRound + 1),
-                    (POSITION_MODE, currentRound + 1), (DIRECTION_MODE, currentRound + 1),
-                    (DIRECTION_MODE, currentRound + 1), (POSITION_MODE, currentRound + 2),
-                    (POSITION_MODE, currentRound + 2), (DIRECTION_MODE, currentRound + 2)])
+                     (POSITION_MODE, currentRound + 1), (DIRECTION_MODE, currentRound + 1),
+                     (DIRECTION_MODE, currentRound + 1), (POSITION_MODE, currentRound + 2),
+                     (POSITION_MODE, currentRound + 2), (DIRECTION_MODE, currentRound + 2)])
             else:
                 self.tree.deepen(
                     [(POSITION_MODE, currentRound + 1), (POSITION_MODE, currentRound + 1),
-                    (DIRECTION_MODE, currentRound + 1), (DIRECTION_MODE, currentRound + 1),
-                    (POSITION_MODE, currentRound + 2), (POSITION_MODE, currentRound + 2),
-                    (DIRECTION_MODE, currentRound + 2), (DIRECTION_MODE, currentRound + 2)])
+                     (DIRECTION_MODE, currentRound + 1), (DIRECTION_MODE, currentRound + 1),
+                     (POSITION_MODE, currentRound + 2), (POSITION_MODE, currentRound + 2),
+                     (DIRECTION_MODE, currentRound + 2), (DIRECTION_MODE, currentRound + 2)])
 
-        if mode.startswith('_'):
-            # 空操作, 我相信这棵树已经知道自己此时无路可走
-            self.tree = self.tree.release(())
-            assert self.tree != None
-        else:
-            # 决策
+        # 决策
+        if decision == None:
             decision, self.tree = self.tree.decision()
-            return decision
+        return decision
 
     def evaluate(self, board, isFirst: bool):
         '''估值函数 TODO 返回 isFirst 方与 not isFirst 方的局面之差
         TODO 先后手是否可以两个版本?
         '''
         def func(x): return 1 << (3 * x)
-        res = sum(map(func, board.getScore(isFirst))) - sum(map(func, board.getScore(not isFirst)))
+        res = sum(map(func, board.getScore(isFirst))) - \
+            sum(map(func, board.getScore(not isFirst)))
         boardList = board.getRaw()
         for col in range(4, 6) if isFirst else range(2, 4):
             for row in range(4):
