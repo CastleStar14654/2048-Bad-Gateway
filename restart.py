@@ -3,7 +3,6 @@ evaluate(board, isFirst) 返回 isFirst 方与 not isFirst 方的局面之差
 '''
 import random
 import operator
-import numpy as np
 
 POSITION_MODE = 'position'
 DIRECTION_MODE = 'direction'
@@ -15,13 +14,10 @@ UP, DOWN, LEFT, RIGHT = 0, 1, 2, 3
 INF = float('inf')
 
 MERGE_INTERFERENCE_THRESHOLD = 4 # 仅处理 2^5 及以上的合并
-
-
-def repr_to_np(board_str: str) -> np.ndarray:
-    '''将棋盘的字符串转变为 numpy 数组
-    返回: numpy 的 int8 数组
-    '''
-    return np.array(board_str.split(), dtype=np.int8).reshape((4, 8))
+BASE_POWER = 2 # 3
+ENEMY_WEIGHT = 1.25 # 1
+BONUS_POWER = BASE_POWER
+ENEMY_BONUS_POWER = BASE_POWER - 1
 
 
 class Node:
@@ -301,16 +297,16 @@ class Player:
         '''估值函数 TODO 返回 isFirst 方与 not isFirst 方的局面之差
         TODO 先后手是否可以两个版本?
         '''
-        def func(x): return 1 << (3 * x)
+        def func(x): return 2 ** (BASE_POWER * x)
         res = sum(map(func, board.getScore(isFirst))) - \
-            sum(map(func, board.getScore(not isFirst)))
+            ENEMY_WEIGHT * sum(map(func, board.getScore(not isFirst)))
         boardList = board.getRaw()
         for col in range(4, 6) if isFirst else range(2, 4):
             for row in range(4):
                 if boardList[row][col][1] == isFirst:
-                    res += 1 << (3 * boardList[row][col][0])
+                    res += 2 ** (BONUS_POWER * boardList[row][col][0])
         for col in range(6, 8) if isFirst else range(2):
             for row in range(4):
                 if boardList[row][col][1] == isFirst:
-                    res += 1 << (2 * boardList[row][col][0])
+                    res += 2 ** (ENEMY_BONUS_POWER * boardList[row][col][0])
         return res
