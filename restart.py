@@ -91,12 +91,13 @@ class Node:
                     # 创建新节点, 给下一层
                     self.nodes[op_func[2]] = Node(self.isFirst, modes[0][0], board_copy, modes[0][1],
                                                   self.evaluate, not self.minimax, -INF, INF)
-                    # 下面与之前类似
+                    # 更新子节点属性
                     setattr(self.nodes[op_func[2]],
                             self.ab_attr, getattr(self, self.ab_attr))
-                    new_value = self.nodes[op_func[2]].deepen(
-                        modes[1:])  # 继续往深层搜
+                    # 继续往深层搜
+                    new_value = self.nodes[op_func[2]].deepen(modes[1:])
                     if self.comp(new_value, getattr(self, self.ab_attr)):
+                        # 获得了更好的上下限
                         setattr(self, self.ab_attr, new_value)
                     if self.alpha >= self.beta:  # 剪枝条件
                         break
@@ -150,7 +151,7 @@ class Node:
                 res.append(('add', self.isFirst ^ self.minimax, pos))
 
             if not res:
-                # 如果局势比较晚, 或者不可以在自己这里放, 那么随机搞一个
+                # 如果不可以在自己这里放, 那么随机搞一个
                 nones = self.board.getNone(self.isFirst == self.minimax)
                 if nones:
                     random.shuffle(nones)
@@ -232,8 +233,8 @@ class Player:
 
         # 建设搜索树
         decision = None
-        self.tree = Node(self._isFirst, mode, board.copy(), currentRound,
-                         self.evaluate, False)
+        self.tree = Node(self._isFirst, mode, board.copy(),
+                         currentRound, self.evaluate, False)
         if mode == POSITION_MODE:
             # 尝试看有没有高收益的阻碍对方合并的地方
             # 寻找对面的大子合并方向
